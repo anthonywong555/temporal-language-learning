@@ -21,18 +21,9 @@ export async function getConnectionOptions(): Promise<ConnectionOptions> {
   const address = getenv("TEMPORAL_ADDRESS", "localhost:7233");
 
   let tls: ConnectionOptions["tls"] = undefined;
-  if (process.env.TEMPORAL_TLS_CERT) {
-    let crt;
-    let key;
-
-    if(getenv('IS_FLY', 'false') == 'true') {
-      console.info('🎈On Fly.io🎈');
-      crt = Buffer.from(getenv("TEMPORAL_TLS_CERT"), 'base64');
-      key = Buffer.from(getenv("TEMPORAL_TLS_KEY"), 'base64');
-    } else {
-      crt = await fs.readFile(getenv("TEMPORAL_TLS_CERT"));
-      key = await fs.readFile(getenv("TEMPORAL_TLS_KEY"));
-    }
+  if (process.env.TEMPORAL_CLIENT_CERT_PATH) {
+    const crt = await fs.readFile(getenv("TEMPORAL_CLIENT_CERT_PATH"));
+    const key = await fs.readFile(getenv("TEMPORAL_CLIENT_KEY_PATH"));
 
     tls = { clientCertPair: { crt, key } };
     console.info('🤖: Connecting to Temporal Cloud ⛅');

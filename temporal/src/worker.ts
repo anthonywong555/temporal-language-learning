@@ -71,7 +71,7 @@ async function run() {
       ...getWorkflowOptions(),
     });
 
-    const statusPort = getenv('TEMPORAL_WORKER_STATUS_HTTP_PORT', '');
+    const statusPort = getenv('TEMPORAL_WORKER_STATUS_HTTP_PORT', '80');
 
     if(statusPort) {
       await withOptionalStatusServer(worker, parseInt(statusPort), async () => {
