@@ -1,8 +1,8 @@
 import { Connection, Client } from '@temporalio/client';
-import { example } from './workflows/example/workflow';
+import { translateCantonese } from './workflows/translation/cantonese/workflow';
 import { nanoid } from 'nanoid';
 import { getConnectionOptions, getenv, namespace, taskQueue } from './env';
-import type { ExampleRequest } from './workflows/example/types';
+import type { TranslationRequestCantonese } from './workflows/translation/types';
 
 async function run() {
   const connection = await Connection.connect(await getConnectionOptions());
@@ -14,18 +14,18 @@ async function run() {
 
   const workflowId = `workflow-${nanoid()}`;
 
-  const name = 'World';
-  const aExampleRequest:ExampleRequest = {
-    name
+  const text = '我己經吃飯了';
+  const aRequest:TranslationRequestCantonese = {
+    text
   };
 
-  const result = await client.workflow.execute(example, {
+  const result = await client.workflow.start(translateCantonese, {
     taskQueue,
-    args: [aExampleRequest],
+    args: [aRequest],
     workflowId: workflowId
   });
 
-  console.log(`Result: ${result}`);
+  console.log(`Start a workflow`);
 }
 
 run().catch((err) => {

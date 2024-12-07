@@ -71,12 +71,12 @@ async function run() {
       ...getWorkflowOptions(),
     });
 
-    const statusPort = getenv('TEMPORAL_WORKER_STATUS_HTTP_PORT', '80');
+    const statusPort = getenv('TEMPORAL_WORKER_STATUS_HTTP_PORT', '');
 
     if(statusPort) {
       await withOptionalStatusServer(worker, parseInt(statusPort), async () => {
         try {
-          console.info('🤖: Temporal Worker Online! Beep Boop Beep!');
+          console.info(`🤖: Temporal Worker Online with HTTP Status Port 🛜! Port ${statusPort} Beep Boop Beep!`);
           await worker.run();
         } finally {
           await connection.close();
