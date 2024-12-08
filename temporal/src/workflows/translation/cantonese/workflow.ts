@@ -1,34 +1,60 @@
 import { proxyActivities, proxyLocalActivities } from '@temporalio/workflow';
-import type { TranslationRequestCantonese } from '../types';
+import type { TranslationCantoneseRequest, TranslationCantoneseResponse } from './types';
 import type * as activities from '../../../sharable-activites/cantonese/activity';
 import type { CangjieResponse } from '../../../sharable-activites/cantonese/types';
 import { createAnthropicActivites } from '../../../sharable-activites/ai/anthropic/activites';
+import { createOpenAIActivites } from '../../../sharable-activites/ai/openai/activites';
 
-const { toCangjie, toJyupting } = proxyLocalActivities<typeof activities>({
+const { toCangjie, toJyupting, isChinese } = proxyLocalActivities<typeof activities>({
   startToCloseTimeout: '1 minute',
   retry: {
     maximumAttempts: 3
   }
 });
 
-const { createMessage } = proxyActivities<ReturnType<typeof createAnthropicActivites>>({
+const { createMessage: AnthropicCreateMessage } = proxyActivities<ReturnType<typeof createAnthropicActivites>>({
   scheduleToCloseTimeout: '1 minute',
   retry: {
     maximumAttempts: 3
   }
 })
 
-export async function translateCantonese(aRequest: TranslationRequestCantonese): Promise<string> {
-  const cangjie:Array<CangjieResponse> = await toCangjie({text: aRequest.text, showChineseCode: true, showEnglishCode: true, useSucheng: true});
-  const jyutping = await toJyupting(aRequest.text);
+const { createMessage: OpenAICreateMessage } = proxyActivities<ReturnType<typeof createOpenAIActivites>>({
+  scheduleToCloseTimeout: '3 minute',
+  retry: {
+    maximumAttempts: 3
+  }
+});
 
-  const test = 'later';
-  const anthropicResponse = await createMessage({
-    model: "claude-3-5-sonnet-20241022",
-    max_tokens: 1024,
-    messages: [
-      {"role": "user", "content": `Get the possible translation of '${test}' in Cantonese. Please only return back an array of strings.`}
-    ]
-  });
-  return `cangjie: ${cangjie}\njyutping: ${jyutping}`;
+export async function translateCantonese(aRequest: TranslationCantoneseRequest): Promise<Array<TranslationCantoneseResponse>> {
+  let chineseTexts = [];
+  
+  if(await isChinese(aRequest.text)) {
+    // Simply just just jyupting and cangjie
+    chineseTexts.push(aRequest.text);
+  } else {
+    // Look for possible translation
+    const openAIResponse = await OpenAICreateMessage({
+      messages: [{ role: 'user', content: `Get the possible translation of '${aRequest.text}' in Cantonese i.e Traditional Chinese. Please only return back an array of strings.` }],
+      model: 'gpt-4o',
+    });
+
+    if(openAIResponse.choices[0].message.content) {
+      chineseTexts = JSON.parse(openAIResponse.choices[0].message.content);
+    }
+  }
+
+  const results = await Promise.all(chineseTexts.map(async (aWord: string) => {
+    const cangjie = await toCangjie({text: aWord, showChineseCode: true, showEnglishCode: true, useSucheng: false});
+    const jyutping = await toJyupting(aWord);
+    return {
+      chineseText: aWord,
+      jyutping,
+      cangjie
+    }
+  }));
+
+
+
+  return results;
 }

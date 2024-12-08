@@ -2,11 +2,8 @@ import radicals from '../../../../data/radicals.json';
 import cangjie from '../../../../data/cangjie.json';
 import { CangjieRequest, CangjieResponse } from "./types";
 
-export async function isChinese(text: string) {
-  return {
-      isChinese: /[\u4E00-\u9FFF]/.test(text),
-      code: text.charCodeAt(0).toString(16).toLowerCase()
-  }
+export async function isChinese(text: string):Promise<boolean> {
+  return /[\u4E00-\u9FFF]/.test(text)
 }
 
 async function removeEnglishText(text = '') {

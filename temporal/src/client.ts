@@ -2,7 +2,7 @@ import { Connection, Client } from '@temporalio/client';
 import { translateCantonese } from './workflows/translation/cantonese/workflow';
 import { nanoid } from 'nanoid';
 import { getConnectionOptions, getenv, namespace, taskQueue } from './env';
-import type { TranslationRequestCantonese } from './workflows/translation/types';
+import type { TranslationCantoneseRequest } from './workflows/translation/cantonese/types';
 
 async function run() {
   const connection = await Connection.connect(await getConnectionOptions());
@@ -15,7 +15,7 @@ async function run() {
   const workflowId = `workflow-${nanoid()}`;
 
   const text = '我己經吃飯了';
-  const aRequest:TranslationRequestCantonese = {
+  const aRequest:TranslationCantoneseRequest = {
     text
   };
 

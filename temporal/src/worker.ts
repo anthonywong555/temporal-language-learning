@@ -10,6 +10,9 @@ import {
 
 import { createAnthropicActivites } from "./sharable-activites/ai/anthropic/activites";
 import { AnthropicClient } from "./sharable-activites/ai/anthropic/client";
+import { createOpenAIActivites } from './sharable-activites/ai/openai/activites';
+import { OpenAIClient } from './sharable-activites/ai/openai/client';
+
 
 console.info(`🤖: Node_ENV = ${env}`);
 
@@ -70,12 +73,17 @@ async function run() {
     const anAnthropicClient = new AnthropicClient(ANTHROPIC_API_KEY);
     const anAnthropicActivites = createAnthropicActivites(anAnthropicClient);
 
+    // Import OpenAI
+    const OPENAI_API_KEY = getenv('OPENAI_API_KEY');
+    const anOpenAIClient = new OpenAIClient(OPENAI_API_KEY);
+    const anOpenActivites = createOpenAIActivites(anOpenAIClient);
+
     const connection = await NativeConnection.connect(connectionOptions);
     const worker = await Worker.create({
       connection,
       namespace,
       taskQueue,
-      activities: {...activities, ...anAnthropicActivites},
+      activities: {...activities, ...anAnthropicActivites, ...anOpenActivites},
       ...getWorkflowOptions(),
     });
 
