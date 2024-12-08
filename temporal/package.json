@@ -20,14 +20,18 @@
     ]
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
     "@temporalio/activity": "^1.11.5",
     "@temporalio/client": "^1.11.5",
     "@temporalio/worker": "^1.11.5",
     "@temporalio/workflow": "^1.11.5",
     "dotenv": "^16.4.5",
+    "install": "^0.13.0",
     "moment": "^2.30.1",
     "moment-timezone": "^0.5.45",
     "nanoid": "^3.3.7",
+    "npm": "^10.9.2",
+    "openai": "^4.76.0",
     "to-jyutping": "^3.1.1"
   },
   "devDependencies": {

@@ -8,6 +8,9 @@ import {
   env
 } from "./env";
 
+import { createAnthropicActivites } from "./sharable-activites/ai/anthropic/activites";
+import { AnthropicClient } from "./sharable-activites/ai/anthropic/client";
+
 console.info(`🤖: Node_ENV = ${env}`);
 
 import http from 'node:http';
@@ -62,12 +65,17 @@ async function run() {
       Runtime.install(telemetryOptions);
     }
 
+    // Import Anthropic
+    const ANTHROPIC_API_KEY = getenv('ANTHROPIC_API_KEY');
+    const anAnthropicClient = new AnthropicClient(ANTHROPIC_API_KEY);
+    const anAnthropicActivites = createAnthropicActivites(anAnthropicClient);
+
     const connection = await NativeConnection.connect(connectionOptions);
     const worker = await Worker.create({
       connection,
       namespace,
       taskQueue,
-      activities: {...activities},
+      activities: {...activities, ...anAnthropicActivites},
       ...getWorkflowOptions(),
     });
 
