@@ -12,14 +12,14 @@ const { toCangjie, toJyupting, isChinese } = proxyLocalActivities<typeof activit
   }
 });
 
-const { createMessage: AnthropicCreateMessage } = proxyActivities<ReturnType<typeof createAnthropicActivites>>({
+const { anthropicCreateMessage } = proxyActivities<ReturnType<typeof createAnthropicActivites>>({
   scheduleToCloseTimeout: '1 minute',
   retry: {
     maximumAttempts: 3
   }
 })
 
-const { createMessage: OpenAICreateMessage } = proxyActivities<ReturnType<typeof createOpenAIActivites>>({
+const { openAICreateMessage } = proxyActivities<ReturnType<typeof createOpenAIActivites>>({
   scheduleToCloseTimeout: '3 minute',
   retry: {
     maximumAttempts: 3
@@ -33,8 +33,14 @@ export async function translateCantonese(aRequest: TranslationCantoneseRequest):
     // Simply just just jyupting and cangjie
     chineseTexts.push(aRequest.text);
   } else {
+    await anthropicCreateMessage({
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 1024,
+      messages: [{ role: "user", content: `Get the possible translation of '${aRequest.text}' in Cantonese i.e Traditional Chinese. Please only return back an array of strings.` }],
+    });
+
     // Look for possible translation
-    const openAIResponse = await OpenAICreateMessage({
+    const openAIResponse = await openAICreateMessage({
       messages: [{ role: 'user', content: `Get the possible translation of '${aRequest.text}' in Cantonese i.e Traditional Chinese. Please only return back an array of strings.` }],
       model: 'gpt-4o',
     });
@@ -53,8 +59,6 @@ export async function translateCantonese(aRequest: TranslationCantoneseRequest):
       cangjie
     }
   }));
-
-
 
   return results;
 }

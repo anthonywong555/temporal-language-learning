@@ -10,7 +10,7 @@ export class OpenAIClient {
     });
   }
 
-  async createMessage(body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming, options?: RequestOptions):Promise<OpenAI.Chat.Completions.ChatCompletion> {
+  async openAICreateMessage(body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming, options?: RequestOptions):Promise<OpenAI.Chat.Completions.ChatCompletion> {
     return await this.client.chat.completions.create(body, options);
   }
 }

@@ -14,7 +14,7 @@ async function run() {
 
   const workflowId = `workflow-${nanoid()}`;
 
-  const text = '我己經吃飯了';
+  const text = 'now';
   const aRequest:TranslationCantoneseRequest = {
     text
   };

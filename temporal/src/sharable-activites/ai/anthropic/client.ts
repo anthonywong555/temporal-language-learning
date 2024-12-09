@@ -10,7 +10,7 @@ export class AnthropicClient {
     });
   }
 
-  async createMessage(body: Anthropic.Messages.MessageCreateParamsNonStreaming, options?: RequestOptions):Promise<Anthropic.Messages.Message> {
+  async anthropicCreateMessage(body: Anthropic.Messages.MessageCreateParamsNonStreaming, options?: RequestOptions):Promise<Anthropic.Messages.Message> {
     return await this.client.messages.create(body, options);
   }
 }
