@@ -13,8 +13,10 @@ export interface TranslationCantoneseResponse {
 
 export interface TranslationServiceResponse {
     service: string; // name of the service that used to translate
+    model?: string; // name of the ai model you used.
     englishText: string;
-    possibleTranslations: ChineseCharacter[]
+    possibleTranslations: ChineseCharacter[];
+    errorMessage?: string;
 }
 
 export interface ChineseCharacter {
