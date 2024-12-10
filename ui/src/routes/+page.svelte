@@ -4,6 +4,7 @@
 	import PageTitle from '@temporalio/ui/components/page-title.svelte';
 	import Input from '@temporalio/ui/holocene/input/input.svelte';
 	import Button from '@temporalio/ui/holocene/button.svelte';
+  import Badge from '@temporalio/ui/holocene/badge.svelte';
 	import { v4 as uuidv4 } from "uuid";
   import type { TranslationRequest, TranslationResponse, TranslationHistory, TranslationServiceResponse, ChineseCharacter } from '../lib/types';
 	import { onDestroy } from 'svelte';
@@ -17,7 +18,6 @@
 
 	let query = '';
   let currentQuery = '';
-	let currentWorkflowId = '';
 
 	async function startTranslation() {
 		if(!query) {
@@ -30,6 +30,13 @@
       query,
       workflowId: uuidv4()
     }
+    translationHistories.push({
+        request: aTranslationRequest,
+        response: []
+    });
+
+    translationHistories = translationHistories;
+
     try {
       const response = await fetch('/api/translation', {
         method: 'POST',
@@ -37,12 +44,6 @@
         headers: {
           'content-type': 'application/json'
         }
-      });
-
-      console.log('After Start Translation');
-      translationHistories.push({
-        request: aTranslationRequest,
-        response: []
       });
       const interval = setInterval(() => fetchTranslations(aTranslationRequest), 5000); // // Poll every 5 seconds
       translationResponses = [];
@@ -57,6 +58,7 @@
 
   async function fetchTranslations(aTranslationRequest: TranslationRequest) {
     try {
+      console.log(`fetchTranslation`, aTranslationRequest);
       const fetchRequest = await fetch(`/api/translation?workflowId=${aTranslationRequest.workflowId}`, {
         method: 'GET',
         headers: {
@@ -64,20 +66,19 @@
         },
       });
       const response = (await fetchRequest.json());
+      console.log(`response`, response);
 
       if(response.status === 'COMPLETED' || response.status === 'FAILED') {
         // The Workflow is completed!
+        console.log(`About to stop polling`, aTranslationRequest);
         await stopPollingTranslationResults(aTranslationRequest);
       }
 
       if(response.status === 'RUNNING' || response.status === 'COMPLETED') {
-        console.log(`old translationResponses`, translationResponses);
         //const formattedResponse:TranslationServiceResponse = [];
-        console.log('response', response);
         for(const aTranslationResponse of response.results) {
           const formattedPossibleTranslations = [];
           for(let aTranslationServiceResponse of aTranslationResponse.possibleTranslations) {
-            console.log(aTranslationServiceResponse);
             const chineseTexts = aTranslationServiceResponse.map((aChineseCharacter:any) => aChineseCharacter.chineseText);
             const jyutpings = aTranslationServiceResponse.map((aChineseCharacter:any) => aChineseCharacter.jyutping);
             const cangjieChineseCodes = aTranslationServiceResponse.map((aChineseCharacter:any) => aChineseCharacter.cangjie.chineseCode);
@@ -94,24 +95,29 @@
           aTranslationResponse.possibleTranslations = formattedPossibleTranslations;
         }
 
+        console.log(`formattedResponse`, response);
 
-        translationResponses = [response];
-        translationResponses = translationResponses;
-        console.log(`new translationResponses`, translationResponses);
+
+        if(currentQuery === aTranslationRequest.query) {
+          translationResponses = [response];
+          translationResponses = translationResponses;
+          console.log(`new translationResponses`, translationResponses);
+        }
 
         // Find and Update the History
         const index = translationHistories.findIndex(aHistory => aHistory.request.workflowId == aTranslationRequest.workflowId);
-
-        console.log('index', index);
+        
+        console.log(`index`, index);
         if(index !== -1) {
           translationHistories[index] = {
             request: aTranslationRequest,
-            response: translationResponses
-          }
+            response: [response]
+          };
+
+          console.log(`changetranslationHistories[index]`, translationHistories[index]);
 
           translationHistories = [...translationHistories];
-
-          console.log(`translationHistories`, translationHistories);
+          console.log('translationHistories', translationHistories);
         }
       }
     } catch(e) {
@@ -126,7 +132,7 @@
     if(index !== -1) {
       clearInterval(translationRequests[index].interval);
       translationRequests.splice(index, 1);
-      console.log(`deleted interval ${aTranslationRequest}`);
+      console.log(`deleted interval`, aTranslationRequest);
     }
 	}
 
@@ -137,6 +143,10 @@
       currentQuery = aTranslationHistory.request.query;
     }
   }
+
+  async function addSearchToDeck(aTranslation: ChineseCharacter, englishText: string) {
+    
+  }
 </script>
 
 <PageTitle title="Cantonese Lookup 🔎" url={$page.url.href} />
@@ -144,41 +154,56 @@
   <section class="flex flex-col gap-1 items-left" id="past-searches">
     <h1>Past Searches</h1>
     {#each translationHistories as aTranslationHistory}
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
       <article class="card" aria-label={aTranslationHistory.request.workflowId} on:click={switchHistory(aTranslationHistory.request.workflowId)}>
         <div class="flex justify-between">
         </div>
         <h3>{aTranslationHistory.request.query}</h3>
+        {#if aTranslationHistory?.response[0]?.status === "RUNNING"}
+          <Badge type="blue">Running</Badge>
+        {:else if aTranslationHistory?.response[0]?.status === "COMPLETED"}
+          <Badge type="green">Completed</Badge>
+        {:else if aTranslationHistory?.response[0]?.status != null}
+        <Badge type="yellow">aTranslationHistory.response[0].status</Badge>
+        {:else}
+        
+        {/if}
       </article>
     {/each}
   </section>
   <section class="flex flex-col gap-7 items-center justify-center" id="search">
-    <Input type="text" bind:value={query} label="Enter English or Chinese" id="Input-Field" />
+    <Input type="text" bind:value={query} label="Enter English word to search" id="Input-Field" />
     <Button type="button" on:click={startTranslation}>Submit</Button>
     <div>
-      {#if translationRequests.length > 0}
+      {#if (translationResponses.length === 0 && currentQuery != '') ||  translationResponses[0]?.results?.length === 0}
         <Loading title="Searching for '{currentQuery}'" />
         {:else}
-        <div>
-          {#if currentQuery != ''}
+        <section class="flex flex-col">
+          {#if currentQuery != '' &&  translationResponses.length > 0 && translationResponses[0]?.results?.length > 0}
+          <section class="flex flex-col gap-7 items-center justify-center">
             <h1>Results for '{currentQuery}'</h1>
+          </section>
           {/if}
-          {#each translationResponses as aTranslationResponse}
-            {#each aTranslationResponse.results as aService}
-              {#each aService.possibleTranslations as aTranslation}
-              <article class="card" aria-label={aService.service}>
-                <div class="flex justify-between">
-                </div>
-                <h3>Service: {aService.service}</h3>
-                <!--<h3>{aService.model}</h3>-->
-                <h3>Chinese: {aTranslation.chineseText}</h3>
-                <h3>Jyupting: {aTranslation.jyutping}</h3>
-                <h3>Cangjie: {aTranslation.cangjieChineseCodes}</h3>
-                <h3>English Code: {aTranslation.cangjieEnglishCodes}</h3>
-              </article>
+          <section>
+            {#each translationResponses as aTranslationResponse}
+              {#each aTranslationResponse.results as aService}
+                {#each aService.possibleTranslations as aTranslation}
+                <article class="card" aria-label={aService.service}>
+                  <div class="flex justify-between">
+                  </div>
+                  <h3>Service: {aService.service}</h3>
+                  <!--<h3>{aService.model}</h3>-->
+                  <h3>Chinese: {aTranslation.chineseText}</h3>
+                  <h3>Jyupting: {aTranslation.jyutping}</h3>
+                  <h3>Cangjie: {aTranslation.cangjieChineseCodes}</h3>
+                  <h3>English Code: {aTranslation.cangjieEnglishCodes}</h3>
+                  <Button type="button">Add</Button>
+                </article>
+                {/each}
               {/each}
             {/each}
-          {/each}
-        </div>
+          </section>
+        </section>
       {/if}
     </div>
   </section>

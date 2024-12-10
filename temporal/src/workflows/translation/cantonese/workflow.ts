@@ -3,6 +3,7 @@ import type { PromiseResult, TranslationCantoneseRequest, TranslationServiceResp
 import type * as activities from '../../../sharable-activites/cantonese/activity';
 import { createAnthropicActivites } from '../../../sharable-activites/ai/anthropic/activites';
 import { createOpenAIActivites } from '../../../sharable-activites/ai/openai/activites';
+import * as toolActivites from '../../../sharable-activites/tools/activity';
 import type Anthropic from '@anthropic-ai/sdk';
 
 const { toCangjie, toJyupting, isChinese } = proxyActivities<typeof activities>({
@@ -25,6 +26,13 @@ const { openAICreateMessage } = proxyActivities<ReturnType<typeof createOpenAIAc
     maximumAttempts: 3
   }
 });
+
+const { randomDelay } = proxyActivities<typeof toolActivites>({
+  startToCloseTimeout: '1 minute',
+  retry: {
+    maximumAttempts: 3
+  }
+})
 
 export const getTranslations = defineQuery<Array<TranslationServiceResponse>, []>('getTranslations');
 
@@ -166,6 +174,7 @@ export async function AnthropicAIGetPossibleTranslationCantonese(text: string): 
 
     for(const aChineseCharacter of chineseCharacters) {
       if(await isChinese(aChineseCharacter)) {
+        await randomDelay({});
         const {cangjie, jyutping} = await getCangjieAndJyupting(aChineseCharacter);
         const theActualJyutping = jyutping[0];
         aWordResponse.push({
