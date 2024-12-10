@@ -27,3 +27,11 @@ export interface ChineseCharacter {
         englishCode: string | undefined; // HQI
     }
 }
+
+// Define the structure of a resolved or rejected result
+export interface PromiseResult {
+    status: 'resolved' | 'rejected';
+    value?: TranslationServiceResponse; // For resolved promises
+    error?: string; // For rejected promises
+    index: number;  // The index of the promise in the original array
+};  

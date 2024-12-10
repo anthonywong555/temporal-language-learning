@@ -1,5 +1,5 @@
-import { proxyActivities, proxyLocalActivities, startChild, workflowInfo } from '@temporalio/workflow';
-import type { TranslationCantoneseRequest, TranslationServiceResponse } from './types';
+import { defineQuery, proxyActivities, proxyLocalActivities, setHandler, startChild, workflowInfo } from '@temporalio/workflow';
+import type { PromiseResult, TranslationCantoneseRequest, TranslationServiceResponse } from './types';
 import type * as activities from '../../../sharable-activites/cantonese/activity';
 import { createAnthropicActivites } from '../../../sharable-activites/ai/anthropic/activites';
 import { createOpenAIActivites } from '../../../sharable-activites/ai/openai/activites';
@@ -26,18 +26,15 @@ const { openAICreateMessage } = proxyActivities<ReturnType<typeof createOpenAIAc
   }
 });
 
-// Define the structure of a resolved or rejected result
-type PromiseResult = {
-  status: 'resolved' | 'rejected';
-  value?: TranslationServiceResponse; // For resolved promises
-  error?: string; // For rejected promises
-  index: number;  // The index of the promise in the original array
-};
-
+export const getTranslations = defineQuery<Array<TranslationServiceResponse>, []>('getTranslations');
 
 export async function translateCantonese(aRequest: TranslationCantoneseRequest): Promise<Array<TranslationServiceResponse>> {
   let results:Array<TranslationServiceResponse> = [];
   
+  setHandler(getTranslations, () => {
+    return results;
+  });
+
   if(await isChinese(aRequest.text)) {
     // Simply just just jyupting and cangjie
     const chineseCharacters = aRequest.text.split('');
@@ -56,18 +53,15 @@ export async function translateCantonese(aRequest: TranslationCantoneseRequest):
       });
     }
 
-    console.log(formattedChineseCharacters);
   } else {
     const anthropicChildWorkflowHandle = await startChild(AnthropicAIGetPossibleTranslationCantonese, {
       args: [aRequest.text],
       workflowId: `anthropic-${workflowInfo().workflowId}`,
-      //parentClosePolicy: 'ABANDON'
     });
 
     const openAIChildWorkflowHandle = await startChild(OpenAIGetPossibleTranslationCantonese, {
       args: [aRequest.text],
       workflowId: `openai-${workflowInfo().workflowId}`
-      //parentClosePolicy: 'ABANDON'
     });
 
     const runningTranslationServices = [anthropicChildWorkflowHandle.result(), openAIChildWorkflowHandle.result()];
@@ -125,16 +119,18 @@ export async function OpenAIGetPossibleTranslationCantonese(text: string): Promi
     const aWordResponse = [];
 
     for(const aChineseCharacter of chineseCharacters) {
-      const {cangjie, jyutping} = await getCangjieAndJyupting(aChineseCharacter);
-      const theActualJyutping = jyutping[0];
-      aWordResponse.push({
-        chineseText: aChineseCharacter,
-        jyutping: theActualJyutping[1],
-        cangjie: {
-          chineseCode: cangjie[0].chineseCangjie?.chineseCode,
-          englishCode: cangjie[0].chineseCangjie?.englishCode
-        }
-      });
+      if(await isChinese(aChineseCharacter)) {
+        const {cangjie, jyutping} = await getCangjieAndJyupting(aChineseCharacter);
+        const theActualJyutping = jyutping[0];
+        aWordResponse.push({
+          chineseText: aChineseCharacter,
+          jyutping: theActualJyutping[1],
+          cangjie: {
+            chineseCode: cangjie[0].chineseCangjie?.chineseCode,
+            englishCode: cangjie[0].chineseCangjie?.englishCode
+          }
+        });
+      }
     }
 
     possibleTranslations.push(aWordResponse);
@@ -169,16 +165,18 @@ export async function AnthropicAIGetPossibleTranslationCantonese(text: string): 
     const aWordResponse = [];
 
     for(const aChineseCharacter of chineseCharacters) {
-      const {cangjie, jyutping} = await getCangjieAndJyupting(aChineseCharacter);
-      const theActualJyutping = jyutping[0];
-      aWordResponse.push({
-        chineseText: aChineseCharacter,
-        jyutping: theActualJyutping[1],
-        cangjie: {
-          chineseCode: cangjie[0].chineseCangjie?.chineseCode,
-          englishCode: cangjie[0].chineseCangjie?.englishCode
-        }
-      });
+      if(await isChinese(aChineseCharacter)) {
+        const {cangjie, jyutping} = await getCangjieAndJyupting(aChineseCharacter);
+        const theActualJyutping = jyutping[0];
+        aWordResponse.push({
+          chineseText: aChineseCharacter,
+          jyutping: theActualJyutping[1],
+          cangjie: {
+            chineseCode: cangjie[0].chineseCangjie?.chineseCode,
+            englishCode: cangjie[0].chineseCangjie?.englishCode
+          }
+        });
+      }
     }
 
     possibleTranslations.push(aWordResponse);
