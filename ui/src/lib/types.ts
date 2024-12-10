@@ -5,15 +5,13 @@ export interface TranslationRequest {
 }
 
 export interface TranslationResponse {
-  query: string;
-  workflowId: string;
   status: string;
   results: TranslationServiceResponse[];
 }
 
 export interface TranslationHistory {
   request: TranslationRequest;
-  response: TranslationResponse[];
+  response: TranslationResponse;
 }
 
 export interface TranslationServiceResponse {

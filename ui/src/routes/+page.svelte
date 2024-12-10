@@ -9,9 +9,10 @@
   import type { TranslationRequest, TranslationResponse, TranslationHistory, TranslationServiceResponse, ChineseCharacter } from '../lib/types';
 	import { onDestroy } from 'svelte';
 	
+  let requestToInterval = new Map<string, NodeJS.Timer>() // Keep track of all NodeJS.Timer
 	let translationRequests:Array<TranslationRequest> = []; // All the translation requests goes here
 	// {"query": "now", "workflowId": "uuidv4"}
-	let translationResponses:Array<TranslationResponse> = []; // All the translation responses goes here
+	let translationResponse:TranslationResponse = { status: '', results: []}; // All the translation responses goes here
 	// {"query": "now", "workflowId": "uuidv4", "results": []}
   let translationHistories:Array<TranslationHistory> = [];
   // [{}]
@@ -32,7 +33,10 @@
     }
     translationHistories.push({
         request: aTranslationRequest,
-        response: []
+        response: {
+          status: 'Schedule',
+          results: []
+        }
     });
 
     translationHistories = translationHistories;
@@ -46,8 +50,9 @@
         }
       });
       const interval = setInterval(() => fetchTranslations(aTranslationRequest), 5000); // // Poll every 5 seconds
-      translationResponses = [];
-      translationRequests = [...translationRequests, {...aTranslationRequest, interval}];
+      translationResponse = {status: '', results: []}
+      translationRequests = [...translationRequests, {...aTranslationRequest}];
+      requestToInterval.set(aTranslationRequest.workflowId, interval);
       query = '';
     } catch(e) {
       // TODO: Show a Toast Message
@@ -99,9 +104,8 @@
 
 
         if(currentQuery === aTranslationRequest.query) {
-          translationResponses = [response];
-          translationResponses = translationResponses;
-          console.log(`new translationResponses`, translationResponses);
+          translationResponse = response;
+          console.log(`new translationResponses`, translationResponse);
         }
 
         // Find and Update the History
@@ -111,12 +115,13 @@
         if(index !== -1) {
           translationHistories[index] = {
             request: aTranslationRequest,
-            response: [response]
+            response
           };
 
           console.log(`changetranslationHistories[index]`, translationHistories[index]);
 
           translationHistories = [...translationHistories];
+          translationHistories = translationHistories;
           console.log('translationHistories', translationHistories);
         }
       }
@@ -127,20 +132,15 @@
   }
 
 	async function stopPollingTranslationResults(aTranslationRequest: TranslationRequest) {
-    const index = translationRequests.findIndex(aTranslationRequest => aTranslationRequest.workflowId === aTranslationRequest.workflowId);
-
-    if(index !== -1) {
-      clearInterval(translationRequests[index].interval);
-      translationRequests.splice(index, 1);
-      console.log(`deleted interval`, aTranslationRequest);
-    }
+    clearInterval(requestToInterval.get(aTranslationRequest.workflowId));
+    requestToInterval.delete(aTranslationRequest.workflowId);
 	}
 
   async function switchHistory(workflowId: string) {
     const aTranslationHistory = translationHistories.find(aHistory => aHistory.request.workflowId == workflowId);
     if(aTranslationHistory?.response) {
-      translationResponses = aTranslationHistory.response;
       currentQuery = aTranslationHistory.request.query;
+      translationResponse = aTranslationHistory.response;
     }
   }
 
@@ -159,14 +159,13 @@
         <div class="flex justify-between">
         </div>
         <h3>{aTranslationHistory.request.query}</h3>
-        {#if aTranslationHistory?.response[0]?.status === "RUNNING"}
+        {#if aTranslationHistory?.response?.status === "RUNNING"}
           <Badge type="blue">Running</Badge>
-        {:else if aTranslationHistory?.response[0]?.status === "COMPLETED"}
+        {:else if aTranslationHistory?.response?.status === "COMPLETED"}
           <Badge type="green">Completed</Badge>
-        {:else if aTranslationHistory?.response[0]?.status != null}
-        <Badge type="yellow">aTranslationHistory.response[0].status</Badge>
+        {:else if aTranslationHistory?.response?.status != ''}
+        <Badge type="yellow">{aTranslationHistory.response.status}</Badge>
         {:else}
-        
         {/if}
       </article>
     {/each}
@@ -175,18 +174,17 @@
     <Input type="text" bind:value={query} label="Enter English word to search" id="Input-Field" />
     <Button type="button" on:click={startTranslation}>Submit</Button>
     <div>
-      {#if (translationResponses.length === 0 && currentQuery != '') ||  translationResponses[0]?.results?.length === 0}
+      {#if (translationResponse.results.length === 0 && currentQuery != '')}
         <Loading title="Searching for '{currentQuery}'" />
         {:else}
         <section class="flex flex-col">
-          {#if currentQuery != '' &&  translationResponses.length > 0 && translationResponses[0]?.results?.length > 0}
+          {#if currentQuery != '' &&  translationResponse.results.length > 0}
           <section class="flex flex-col gap-7 items-center justify-center">
             <h1>Results for '{currentQuery}'</h1>
           </section>
           {/if}
           <section>
-            {#each translationResponses as aTranslationResponse}
-              {#each aTranslationResponse.results as aService}
+              {#each translationResponse.results as aService}
                 {#each aService.possibleTranslations as aTranslation}
                 <article class="card" aria-label={aService.service}>
                   <div class="flex justify-between">
@@ -201,7 +199,6 @@
                 </article>
                 {/each}
               {/each}
-            {/each}
           </section>
         </section>
       {/if}
