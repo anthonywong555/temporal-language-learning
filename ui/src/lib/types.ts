@@ -11,6 +11,11 @@ export interface TranslationResponse {
   results: TranslationServiceResponse[];
 }
 
+export interface TranslationHistory {
+  request: TranslationRequest;
+  response: TranslationResponse[];
+}
+
 export interface TranslationServiceResponse {
   service: string; // name of the service that used to translate
   model?: string; // name of the ai model you used.

@@ -5,7 +5,7 @@ import { createAnthropicActivites } from '../../../sharable-activites/ai/anthrop
 import { createOpenAIActivites } from '../../../sharable-activites/ai/openai/activites';
 import type Anthropic from '@anthropic-ai/sdk';
 
-const { toCangjie, toJyupting, isChinese } = proxyLocalActivities<typeof activities>({
+const { toCangjie, toJyupting, isChinese } = proxyActivities<typeof activities>({
   startToCloseTimeout: '1 minute',
   retry: {
     maximumAttempts: 3

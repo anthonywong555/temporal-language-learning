@@ -5,21 +5,26 @@
 	import Input from '@temporalio/ui/holocene/input/input.svelte';
 	import Button from '@temporalio/ui/holocene/button.svelte';
 	import { v4 as uuidv4 } from "uuid";
-  import type { TranslationRequest, TranslationResponse, TranslationServiceResponse, ChineseCharacter } from '../lib/types';
+  import type { TranslationRequest, TranslationResponse, TranslationHistory, TranslationServiceResponse, ChineseCharacter } from '../lib/types';
 	import { onDestroy } from 'svelte';
 	
 	let translationRequests:Array<TranslationRequest> = []; // All the translation requests goes here
 	// {"query": "now", "workflowId": "uuidv4"}
 	let translationResponses:Array<TranslationResponse> = []; // All the translation responses goes here
 	// {"query": "now", "workflowId": "uuidv4", "results": []}
+  let translationHistories:Array<TranslationHistory> = [];
+  // [{}]
 
 	let query = '';
+  let currentQuery = '';
 	let currentWorkflowId = '';
 
 	async function startTranslation() {
 		if(!query) {
       return;
     }
+
+    currentQuery = query;
     
     const aTranslationRequest = {
       query,
@@ -35,10 +40,14 @@
       });
 
       console.log('After Start Translation');
-		  //currentWorkflowId = (await response.json()).workflowId;
+      translationHistories.push({
+        request: aTranslationRequest,
+        response: []
+      });
       const interval = setInterval(() => fetchTranslations(aTranslationRequest), 5000); // // Poll every 5 seconds
-
+      translationResponses = [];
       translationRequests = [...translationRequests, {...aTranslationRequest, interval}];
+      query = '';
     } catch(e) {
       // TODO: Show a Toast Message
       console.error(`An error has occurred`, e);
@@ -86,9 +95,24 @@
         }
 
 
-        translationResponses = [ ...translationResponses, response];
+        translationResponses = [response];
         translationResponses = translationResponses;
         console.log(`new translationResponses`, translationResponses);
+
+        // Find and Update the History
+        const index = translationHistories.findIndex(aHistory => aHistory.request.workflowId == aTranslationRequest.workflowId);
+
+        console.log('index', index);
+        if(index !== -1) {
+          translationHistories[index] = {
+            request: aTranslationRequest,
+            response: translationResponses
+          }
+
+          translationHistories = [...translationHistories];
+
+          console.log(`translationHistories`, translationHistories);
+        }
       }
     } catch(e) {
       console.error(e);
@@ -105,37 +129,60 @@
       console.log(`deleted interval ${aTranslationRequest}`);
     }
 	}
+
+  async function switchHistory(workflowId: string) {
+    const aTranslationHistory = translationHistories.find(aHistory => aHistory.request.workflowId == workflowId);
+    if(aTranslationHistory?.response) {
+      translationResponses = aTranslationHistory.response;
+      currentQuery = aTranslationHistory.request.query;
+    }
+  }
 </script>
 
-<PageTitle title="Temporal SvelteKit Starter" url={$page.url.href} />
-<section class="flex flex-col gap-8 items-center justify-center">
-	<Input type="text" bind:value={query} label="Enter English or Chinese" id="Input-Field" />
-	<Button type="button" on:click={startTranslation}>Submit</Button>
-  <div>
-    {#if translationRequests.length > 0}
-      <Loading />
-    {/if}
-  </div>
-</section>
-
-<div>
-  {#each translationResponses as aTranslationResponse}
-    {#each aTranslationResponse.results as aService}
-      {#each aService.possibleTranslations as aTranslation}
-      <article class="card" aria-label={aService.service}>
+<PageTitle title="Cantonese Lookup 🔎" url={$page.url.href} />
+<section class="flex flex">
+  <section class="flex flex-col gap-1 items-left" id="past-searches">
+    <h1>Past Searches</h1>
+    {#each translationHistories as aTranslationHistory}
+      <article class="card" aria-label={aTranslationHistory.request.workflowId} on:click={switchHistory(aTranslationHistory.request.workflowId)}>
         <div class="flex justify-between">
         </div>
-        <h3>{aService.service}</h3>
-        <!--<h3>{aService.model}</h3>-->
-        <h3>{aTranslation.chineseText}</h3>
-        <h3>{aTranslation.jyutping}</h3>
-        <h3>{aTranslation.cangjieChineseCodes}</h3>
-        <h3>{aTranslation.cangjieEnglishCodes}</h3>
+        <h3>{aTranslationHistory.request.query}</h3>
       </article>
-      {/each}
     {/each}
-  {/each}
-</div>
+  </section>
+  <section class="flex flex-col gap-7 items-center justify-center" id="search">
+    <Input type="text" bind:value={query} label="Enter English or Chinese" id="Input-Field" />
+    <Button type="button" on:click={startTranslation}>Submit</Button>
+    <div>
+      {#if translationRequests.length > 0}
+        <Loading title="Searching for '{currentQuery}'" />
+        {:else}
+        <div>
+          {#if currentQuery != ''}
+            <h1>Results for '{currentQuery}'</h1>
+          {/if}
+          {#each translationResponses as aTranslationResponse}
+            {#each aTranslationResponse.results as aService}
+              {#each aService.possibleTranslations as aTranslation}
+              <article class="card" aria-label={aService.service}>
+                <div class="flex justify-between">
+                </div>
+                <h3>Service: {aService.service}</h3>
+                <!--<h3>{aService.model}</h3>-->
+                <h3>Chinese: {aTranslation.chineseText}</h3>
+                <h3>Jyupting: {aTranslation.jyutping}</h3>
+                <h3>Cangjie: {aTranslation.cangjieChineseCodes}</h3>
+                <h3>English Code: {aTranslation.cangjieEnglishCodes}</h3>
+              </article>
+              {/each}
+            {/each}
+          {/each}
+        </div>
+      {/if}
+    </div>
+  </section>
+</section>
 
 <style lang="postcss">
   .card {
@@ -148,4 +195,19 @@
   .card a {
       @apply underline;
   }
+
+  #past-searches {
+    width: 20%;
+    overflow-y: scroll;
+  }
+
+  #past-searches > * {
+    width: 100%;
+  }
+
+  #search {
+    width: 80%;
+  }
+
+
 </style>
