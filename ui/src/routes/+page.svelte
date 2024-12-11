@@ -170,10 +170,12 @@
       </article>
     {/each}
   </section>
-  <section class="flex flex-col gap-7 items-center justify-center" id="search">
-    <Input type="text" bind:value={query} label="Enter English word to search" id="Input-Field" />
-    <Button type="button" on:click={startTranslation}>Submit</Button>
-    <div>
+  <section class="flex flex-col gap-7" id="search">
+    <section class="flex flex-col items-center">
+      <Input type="text" bind:value={query} label="Enter English word to search" id="Input-Field" />
+      <Button type="button" on:click={startTranslation}>Submit</Button>
+    </section>
+    <section class="flex flex-col">
       {#if (translationResponse.results.length === 0 && currentQuery != '')}
         <Loading title="Searching for '{currentQuery}'" />
         {:else}
@@ -183,7 +185,7 @@
             <h1>Results for '{currentQuery}'</h1>
           </section>
           {/if}
-          <section>
+          <section class="flex responses">
               {#each translationResponse.results as aService}
                 {#each aService.possibleTranslations as aTranslation}
                 <article class="card" aria-label={aService.service}>
@@ -202,7 +204,7 @@
           </section>
         </section>
       {/if}
-    </div>
+      </section>
   </section>
 </section>
 
@@ -218,9 +220,19 @@
       @apply underline;
   }
 
+  .responses {
+    width: 100%;
+    display: block;
+  }
+
+  .responses > * {
+    float: left;
+  }
+
   #past-searches {
     width: 20%;
     overflow-y: scroll;
+    height: 100vh;
   }
 
   #past-searches > * {
