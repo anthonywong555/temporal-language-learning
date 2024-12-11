@@ -5,7 +5,9 @@
 	import Input from '@temporalio/ui/holocene/input/input.svelte';
 	import Button from '@temporalio/ui/holocene/button.svelte';
   import Badge from '@temporalio/ui/holocene/badge.svelte';
-	import { v4 as uuidv4 } from "uuid";
+  import Toaster from '@temporalio/ui/holocene/toaster.svelte';
+  import { toaster } from '@temporalio/ui/stores/toaster';
+  import { v4 as uuidv4 } from "uuid";
   import type { TranslationRequest, TranslationResponse, TranslationHistory, TranslationServiceResponse, ChineseCharacter } from '../lib/types';
 	import { onDestroy } from 'svelte';
 	
@@ -19,6 +21,7 @@
 
 	let query = '';
   let currentQuery = '';
+  let currentWorkflowId = '';
 
 	async function startTranslation() {
 		if(!query) {
@@ -31,6 +34,8 @@
       query,
       workflowId: uuidv4()
     }
+    currentWorkflowId = aTranslationRequest.workflowId;
+
     translationHistories.push({
         request: aTranslationRequest,
         response: {
@@ -140,16 +145,46 @@
     const aTranslationHistory = translationHistories.find(aHistory => aHistory.request.workflowId == workflowId);
     if(aTranslationHistory?.response) {
       currentQuery = aTranslationHistory.request.query;
+      currentWorkflowId = workflowId;
       translationResponse = aTranslationHistory.response;
     }
   }
 
-  async function addSearchToDeck(aTranslation: ChineseCharacter, englishText: string) {
-    
+  async function addSearchToDeck(aTranslation: ChineseCharacter, englishText: string, aService: TranslationServiceResponse) {
+    try {
+      const response = await fetch('/api/anki/card', {
+        method: 'POST',
+        body: JSON.stringify({
+          englishText,
+          chineseText: aTranslation.chineseText,
+          jyutping: aTranslation.jyutping,
+          cangjie: aTranslation.cangjieEnglishCodes
+        }),
+        headers: {
+          'content-type': 'application/json'
+        }
+      });
+
+      // Toast Message
+      toaster.push({
+        message: `Added '${englishText}' to the deck!`,
+        variant: 'success'
+      });
+
+      // Add a Badge
+      const aTranslationHistory = translationHistories.find(aHistory => aHistory.request.workflowId == currentWorkflowId);
+      if(aTranslationHistory) {
+        aTranslationHistory.isSave = true;
+        translationHistories = [...translationHistories];
+      }
+    } catch(e) {
+      console.error(e);
+    }
   }
 </script>
 
 <PageTitle title="Cantonese Lookup 🔎" url={$page.url.href} />
+<Toaster toasts={toaster.toasts} pop={toaster.pop} />
 <section class="flex flex">
   <section class="flex flex-col gap-1 items-left" id="past-searches">
     <h1>Past Searches</h1>
@@ -160,12 +195,15 @@
         </div>
         <h3>{aTranslationHistory.request.query}</h3>
         {#if aTranslationHistory?.response?.status === "RUNNING"}
-          <Badge type="blue">Running</Badge>
-        {:else if aTranslationHistory?.response?.status === "COMPLETED"}
-          <Badge type="green">Completed</Badge>
-        {:else if aTranslationHistory?.response?.status != ''}
-        <Badge type="yellow">{aTranslationHistory.response.status}</Badge>
-        {:else}
+            <Badge type="blue">Running</Badge>
+          {:else if aTranslationHistory?.response?.status === "COMPLETED"}
+            <Badge type="green">Completed</Badge>
+          {:else if aTranslationHistory?.response?.status != ''}
+          <Badge type="yellow">{aTranslationHistory.response.status}</Badge>
+        {/if}
+
+        {#if aTranslationHistory.isSave} 
+          <Badge type="green">Saved</Badge>
         {/if}
       </article>
     {/each}
@@ -197,7 +235,7 @@
                   <h3>Jyupting: {aTranslation.jyutping}</h3>
                   <h3>Cangjie: {aTranslation.cangjieChineseCodes}</h3>
                   <h3>English Code: {aTranslation.cangjieEnglishCodes}</h3>
-                  <Button type="button">Add</Button>
+                  <Button type="button" on:click={addSearchToDeck(aTranslation, currentQuery, aService)}>Add</Button>
                 </article>
                 {/each}
               {/each}

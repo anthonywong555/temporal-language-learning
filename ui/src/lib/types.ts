@@ -12,6 +12,7 @@ export interface TranslationResponse {
 export interface TranslationHistory {
   request: TranslationRequest;
   response: TranslationResponse;
+  isSave?: boolean;
 }
 
 export interface TranslationServiceResponse {

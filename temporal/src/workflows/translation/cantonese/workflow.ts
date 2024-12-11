@@ -174,7 +174,7 @@ export async function AnthropicAIGetPossibleTranslationCantonese(text: string): 
 
     for(const aChineseCharacter of chineseCharacters) {
       if(await isChinese(aChineseCharacter)) {
-        await randomDelay({});
+        //await randomDelay({});
         const {cangjie, jyutping} = await getCangjieAndJyupting(aChineseCharacter);
         const theActualJyutping = jyutping[0];
         aWordResponse.push({
