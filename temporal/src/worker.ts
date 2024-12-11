@@ -10,9 +10,10 @@ import {
 
 import { createAnthropicActivites } from "./sharable-activites/ai/anthropic/activites";
 import { AnthropicClient } from "./sharable-activites/ai/anthropic/client";
-import { createOpenAIActivites } from './sharable-activites/ai/openai/activites';
+import { createOpenAIActivites } from './sharable-activites/ai/openai/activities';
 import { OpenAIClient } from './sharable-activites/ai/openai/client';
-
+import { createAnkiActivites } from "./sharable-activites/anki/activities";
+import { AnkiClient } from "./sharable-activites/anki/client";
 
 console.info(`🤖: Node_ENV = ${env}`);
 
@@ -78,12 +79,16 @@ async function run() {
     const anOpenAIClient = new OpenAIClient(OPENAI_API_KEY);
     const anOpenActivites = createOpenAIActivites(anOpenAIClient);
 
+    // Anki
+    const anAnkiClient = new AnkiClient();
+    const anAnkiActivites = createAnkiActivites(anAnkiClient);
+
     const connection = await NativeConnection.connect(connectionOptions);
     const worker = await Worker.create({
       connection,
       namespace,
       taskQueue,
-      activities: {...activities, ...anAnthropicActivites, ...anOpenActivites},
+      activities: {...activities, ...anAnthropicActivites, ...anOpenActivites, ...anAnkiActivites},
       ...getWorkflowOptions(),
     });
 

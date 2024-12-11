@@ -2,7 +2,7 @@ import { defineQuery, proxyActivities, proxyLocalActivities, setHandler, startCh
 import type { PromiseResult, TranslationCantoneseRequest, TranslationServiceResponse } from './types';
 import type * as activities from '../../../sharable-activites/cantonese/activity';
 import { createAnthropicActivites } from '../../../sharable-activites/ai/anthropic/activites';
-import { createOpenAIActivites } from '../../../sharable-activites/ai/openai/activites';
+import { createOpenAIActivites } from '../../../sharable-activites/ai/openai/activities';
 import * as toolActivites from '../../../sharable-activites/tools/activity';
 import type Anthropic from '@anthropic-ai/sdk';
 
