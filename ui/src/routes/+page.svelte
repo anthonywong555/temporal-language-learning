@@ -98,7 +98,7 @@
               chineseText: chineseTexts.join(''),
               jyutping: jyutpings.join(' '),
               cangjieChineseCodes: cangjieChineseCodes.join(' | '),
-              cangjieEnglishCodes: cangjieEnglishCodes.join(' | ')
+              cangjieEnglishCodes: cangjieEnglishCodes.join(' | '),
             });
           }
 
@@ -107,20 +107,27 @@
 
         console.log(`formattedResponse`, response);
 
-
-        if(currentQuery === aTranslationRequest.query) {
-          translationResponse = response;
-          console.log(`new translationResponses`, translationResponse);
-        }
-
         // Find and Update the History
         const index = translationHistories.findIndex(aHistory => aHistory.request.workflowId == aTranslationRequest.workflowId);
-        
+        let newResponse:TranslationResponse = { status: response.status, results: []};
         console.log(`index`, index);
         if(index !== -1) {
+          newResponse.results = translationHistories[index].response.results;
+
+          for(const aService of response.results) {
+            console.log(`aService.service`, aService.service);
+            
+            if(!newResponse.results.some((anElement) => anElement.service == aService.service)) {
+              newResponse.results.push(aService);
+            }
+          }
+
+          console.log(`newResponse`, newResponse);
+
           translationHistories[index] = {
             request: aTranslationRequest,
-            response
+            response: newResponse,
+            isSave: translationHistories[index].isSave
           };
 
           console.log(`changetranslationHistories[index]`, translationHistories[index]);
@@ -128,6 +135,11 @@
           translationHistories = [...translationHistories];
           translationHistories = translationHistories;
           console.log('translationHistories', translationHistories);
+        }
+
+        if(currentQuery === aTranslationRequest.query) {
+          translationResponse = newResponse;
+          console.log(`new translationResponses`, translationResponse);
         }
       }
     } catch(e) {
@@ -167,15 +179,21 @@
 
       // Toast Message
       toaster.push({
-        message: `Added '${englishText}' to the deck!`,
+        message: `Added '${aTranslation.chineseText}' to the deck!`,
         variant: 'success'
       });
 
       // Add a Badge
       const aTranslationHistory = translationHistories.find(aHistory => aHistory.request.workflowId == currentWorkflowId);
       if(aTranslationHistory) {
+        aTranslation.isSave = true;
+
         aTranslationHistory.isSave = true;
         translationHistories = [...translationHistories];
+        translationHistories = translationHistories;
+        console.log(translationHistories);
+
+        translationResponse = aTranslationHistory.response;
       }
     } catch(e) {
       console.error(e);
@@ -226,7 +244,7 @@
           <section class="flex responses">
               {#each translationResponse.results as aService}
                 {#each aService.possibleTranslations as aTranslation}
-                <article class="card" aria-label={aService.service}>
+                <article class={`${aTranslation?.isSave === true ? 'saveCard card' : 'card'}`} aria-label={aService.service}>
                   <div class="flex justify-between">
                   </div>
                   <h3>Service: {aService.service}</h3>
@@ -250,6 +268,11 @@
   .card {
       @apply ease-out duration-300 transition-all flex flex-col gap-4 h-auto border-[3px] border-gray-900 rounded-xl p-8 z-20 bg-white;
   }
+
+  .saveCard {
+      @apply border-green-100;
+  }
+
   .card h3 {
       @apply text-lg font-medium;
   }

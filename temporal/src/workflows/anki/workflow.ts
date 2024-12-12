@@ -45,6 +45,7 @@ export async function learningSession(request: LearningSessionRequest): Promise<
           fields: {
             'Front': aWord.chineseText,
             'Back': aWord.englishText + '<br>' + aWord.jyutping + '<br>' + aWord.cangjie,
+            'Target Text to Generate Speech': aWord.chineseText
           }
         }
       })

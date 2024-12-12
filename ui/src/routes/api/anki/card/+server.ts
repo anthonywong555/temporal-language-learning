@@ -40,9 +40,9 @@ export const POST = (async ({ request }) => {
 
   // Create a Temporal Workflow
   const result = await client.workflow.signalWithStart('learningSession', {
-    workflowId: 'workflow-id-123',
+    workflowId: 'anki-deck',
     taskQueue: TEMPORAL_TASK_QUEUE,
-    args: [{ deckName: 'testing' }],
+    args: [{ deckName: 'Temporal Language Deck' }],
     signal: 'ADD_CARD',
     signalArgs: [ addCardRequest ],
   });

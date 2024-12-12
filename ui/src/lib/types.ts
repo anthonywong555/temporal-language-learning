@@ -34,4 +34,5 @@ export interface ChineseCharacter {
       chineseCode: string | undefined; // 竹手戈
       englishCode: string | undefined; // HQI
   }
+  isSave?: boolean;
 }
