@@ -162,6 +162,29 @@
     }
   }
 
+  async function saveDeck() {
+    try {
+      await fetch('/api/anki/deck', {
+        method: 'POST',
+        body: JSON.stringify({}),
+        headers: {
+          'content-type': 'application/json'
+        }
+      });
+
+      // Toast Message
+      toaster.push({
+        message: `Saved the deck!`,
+        variant: 'success'
+      });
+    } catch(e) {
+      toaster.push({
+        message: `Failed to save the deck.`,
+        variant: 'error'
+      });
+    }
+  }
+
   async function addSearchToDeck(aTranslation: ChineseCharacter, englishText: string, aService: TranslationServiceResponse) {
     try {
       const response = await fetch('/api/anki/card', {
@@ -170,7 +193,7 @@
           englishText,
           chineseText: aTranslation.chineseText,
           jyutping: aTranslation.jyutping,
-          cangjie: aTranslation.cangjieEnglishCodes
+          cangjie: aTranslation.cangjieChineseCodes
         }),
         headers: {
           'content-type': 'application/json'
@@ -197,8 +220,14 @@
       }
     } catch(e) {
       console.error(e);
+
+      toaster.push({
+        message: `Failed to add ${aTranslation.chineseText} to the deck.`,
+        variant: 'error'
+      });
     }
   }
+
 </script>
 
 <PageTitle title="Cantonese Lookup 🔎" url={$page.url.href} />
@@ -208,7 +237,7 @@
     <h1>Past Searches</h1>
     {#each translationHistories as aTranslationHistory}
       <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <article class="card" aria-label={aTranslationHistory.request.workflowId} on:click={switchHistory(aTranslationHistory.request.workflowId)}>
+      <article class="card" aria-label={aTranslationHistory.request.workflowId} on:click={() => switchHistory(aTranslationHistory.request.workflowId)}>
         <div class="flex justify-between">
         </div>
         <h3>{aTranslationHistory.request.query}</h3>
@@ -253,7 +282,7 @@
                   <h3>Jyupting: {aTranslation.jyutping}</h3>
                   <h3>Cangjie: {aTranslation.cangjieChineseCodes}</h3>
                   <h3>English Code: {aTranslation.cangjieEnglishCodes}</h3>
-                  <Button type="button" on:click={addSearchToDeck(aTranslation, currentQuery, aService)}>Add</Button>
+                  <Button type="button" on:click={() => addSearchToDeck(aTranslation, currentQuery, aService)}>Add</Button>
                 </article>
                 {/each}
               {/each}
@@ -261,6 +290,9 @@
         </section>
       {/if}
       </section>
+  </section>
+  <section class="flex flex-col gap-1">
+    <Button type="button" on:click={() => saveDeck()}>Save</Button>
   </section>
 </section>
 
