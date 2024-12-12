@@ -30,3 +30,26 @@ function getRandomInt(min:number, max:number) {
   const maxFloored = Math.floor(max);
   return Math.floor(Math.random() * (maxFloored - minCeiled) + minCeiled); // The maximum is exclusive and the minimum is inclusive
 }
+
+/**
+ * Source: https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+ * @param array 
+ * @returns 
+ */
+
+export async function shuffleArray(array: any[]): Promise<any[]> {
+  let currentIndex = array.length;
+
+  // While there remain elements to shuffle...
+  while (currentIndex != 0) {
+
+    // Pick a remaining element...
+    let randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+
+    // And swap it with the current element.
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]];
+  }
+  return array;
+}

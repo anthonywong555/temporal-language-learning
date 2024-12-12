@@ -1,4 +1,6 @@
 <script lang="ts">
+  // import entire JSON file as a default import
+  import jyutpingToChineseJSON from '$lib/data/jyutpingToChinese.json';
 	import { page } from '$app/stores';
 	import Loading from '@temporalio/ui/holocene/loading.svelte';
 	import PageTitle from '@temporalio/ui/components/page-title.svelte';
@@ -9,7 +11,7 @@
   import { toaster } from '@temporalio/ui/stores/toaster';
   import { v4 as uuidv4 } from "uuid";
   import type { TranslationRequest, TranslationResponse, TranslationHistory, TranslationServiceResponse, ChineseCharacter } from '../lib/types';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	
   let requestToInterval = new Map<string, NodeJS.Timer>() // Keep track of all NodeJS.Timer
 	let translationRequests:Array<TranslationRequest> = []; // All the translation requests goes here
@@ -18,6 +20,18 @@
 	// {"query": "now", "workflowId": "uuidv4", "results": []}
   let translationHistories:Array<TranslationHistory> = [];
   // [{}]
+
+  // Jyupting Typing
+  let inputJyutping = "";
+  let possibleCharacters:Array<string> = [];
+  let displayCharacters:Array<string> = [];
+  let currentPage = 0;
+
+  const jyutpingToChineseObject = JSON.parse(JSON.stringify(jyutpingToChineseJSON));
+  const jyutpingToChinese:Map<string, Array<string>> = new Map(Object.entries(jyutpingToChineseObject));
+  //const jyutpings = Object.keys(jyutpingToChinese);
+  const jyutpings = Array.from(jyutpingToChinese.keys());
+  //console.log('jyutpings', jyutpings);
 
 	let query = '';
   let currentQuery = '';
@@ -228,6 +242,102 @@
     }
   }
 
+  function findCharacters(query: string) {
+    let possibleCharacters:Array<string> = [];
+    jyutpings.map((aJyutping: string) => {
+        if(aJyutping.startsWith(query)) {
+          const chineses = jyutpingToChinese.get(aJyutping);
+          console.log('chinese', chineses);
+          if(chineses) {
+            possibleCharacters = [...possibleCharacters, ...chineses];
+          }
+        }
+      });
+
+    return possibleCharacters;
+  }
+
+  function isNumber(str:string) {
+    if (typeof str !== 'string') {
+      return false;
+    }
+  return !Number.isNaN(str) && !isNaN(parseFloat(str));
+  }
+  // Jyupting Component
+  function handleInput(event: InputEvent) {
+    const {data, inputType} = event;
+    console.log('data', data);
+    query = query.slice(0, -1);
+    if(inputType === 'insertText') {
+        inputJyutping = `${inputJyutping}${data}`;
+        if(inputJyutping) {
+          possibleCharacters = findCharacters(inputJyutping);
+          currentPage = 0;
+          updateDisplayCharacters();
+          //query = '';
+        }
+    }
+  }
+  
+  const handleNextPage = () => {
+    if ((currentPage + 1) * 9 < possibleCharacters.length) {
+      currentPage++;
+      updateDisplayCharacters();
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if(currentPage > 0) {
+      currentPage--;
+      updateDisplayCharacters(); 
+    }
+  }
+
+  const handleKeydown = (event: any) => {
+    console.log('HITT');
+    if (event.key === "0" && query.trim() === "") {
+      console.log(`handleKeydown`);
+      handleNextPage();
+    }
+  };
+
+  function updateDisplayCharacters() {
+    const start = currentPage * 9;
+    displayCharacters = possibleCharacters.slice(start, start + 9);
+  };
+
+  const allowedCharacters = /^[a-zA-Z0-9]+$/; // Example: Only alphanumeric characters are allowed
+
+  function handleKeyDown(event) {
+    console.log('key', event.key);
+    if (event.key === "Backspace") {
+      if (inputJyutping.length > 0) {
+        // Remove the last character from otherCharacters
+        inputJyutping = inputJyutping.slice(0, -1);
+        event.preventDefault(); // Prevent backspace from affecting the input field
+      } else if (query.length > 0) {
+        // Remove the last character from inputValue if otherCharacters is empty
+        query = query.slice(0, -1);
+      }
+    } else if(event.key === '+') {
+      handleNextPage();
+      event.preventDefault();
+    } else if(event.key === '-') {
+      handlePreviousPage();
+      event.preventDefault();
+    }else if(isNumber(event.key)) {
+      if(displayCharacters[parseInt(event.key)]) {
+        query = `${query}${displayCharacters[parseInt(event.key)]}`;
+        displayCharacters = [];
+        inputJyutping = '';
+        possibleCharacters = [];
+      }
+
+      event.preventDefault();
+    } else if(!allowedCharacters.test(event.key)) {
+      event.preventDefault();
+    }
+  }
 </script>
 
 <PageTitle title="Cantonese Lookup 🔎" url={$page.url.href} />
@@ -257,8 +367,24 @@
   </section>
   <section class="flex flex-col gap-7" id="search">
     <section class="flex flex-col items-center">
-      <Input type="text" bind:value={query} label="Enter English word to search" id="Input-Field" />
+      {inputJyutping}
+      <Input type="text" bind:value={query} on:input={handleInput} on:keydown={handleKeyDown}  label="Enter English or Chinese" id="Input-Field" />
       <Button type="button" on:click={startTranslation}>Submit</Button>
+      {#if displayCharacters.length > 0}
+      <ul>
+        {#each displayCharacters as character}
+          <li> {character}</li>
+        {/each}
+      </ul>
+      {#if (currentPage + 1) * 9 < possibleCharacters.length}
+        <p>+</p>
+      {/if}
+      {#if currentPage != 0 }
+        <p>-</p>
+      {/if}
+    {:else}
+      <p>No matching characters found.</p>
+    {/if}
     </section>
     <section class="flex flex-col">
       {#if (translationResponse.results.length === 0 && currentQuery != '')}

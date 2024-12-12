@@ -32,7 +32,7 @@ const { randomDelay } = proxyActivities<typeof toolActivites>({
   retry: {
     maximumAttempts: 3
   }
-})
+});
 
 export const getTranslations = defineQuery<Array<TranslationServiceResponse>, []>('getTranslations');
 
