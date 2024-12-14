@@ -1,6 +1,5 @@
 import TextTranslationClient from "@azure-rest/ai-translation-text";
-import type { Translate, TranslatorCredential, InputTextItem, TranslateParameters, Translate200Response, TranslateDefaultResponse, TransliterateParameters, TransliterateDefaultResponse, Transliterate200Response, FindSentenceBoundariesParameters, GetSupportedLanguagesParameters, LookupDictionaryEntriesParameters }  from "@azure-rest/ai-translation-text";
-
+import type { TranslatorCredential, TranslateParameters, TransliterateParameters, FindSentenceBoundariesParameters, GetSupportedLanguagesParameters, LookupDictionaryEntriesParameters }  from "@azure-rest/ai-translation-text";
 
 export class AzureClient {
   client;

@@ -8,10 +8,23 @@ import {
   env
 } from "./env";
 
+// Anthropic
 import { createAnthropicActivites } from "./sharable-activites/ai/anthropic/activites";
 import { AnthropicClient } from "./sharable-activites/ai/anthropic/client";
+
+// OpenAI
 import { createOpenAIActivites } from './sharable-activites/ai/openai/activities';
 import { OpenAIClient } from './sharable-activites/ai/openai/client';
+
+// Google
+import { createGoogleActivites } from "./sharable-activites/ai/google/activites";
+import { GoogleClient } from "./sharable-activites/ai/google/client";
+
+// Azure
+import { createAzureActivites } from "./sharable-activites/ai/azure/activites";
+import { AzureClient } from "./sharable-activites/ai/azure/client";
+
+// Anki
 import { createAnkiActivites } from "./sharable-activites/anki/activities";
 import { AnkiClient } from "./sharable-activites/anki/client";
 
@@ -79,6 +92,23 @@ async function run() {
     const anOpenAIClient = new OpenAIClient(OPENAI_API_KEY);
     const anOpenActivites = createOpenAIActivites(anOpenAIClient);
 
+    // Google
+    const GOOGLE_CLOUD_API_KEY = getenv('GOOGLE_CLOUD_API_KEY');
+    const aGoogleClient = new GoogleClient({
+      key: GOOGLE_CLOUD_API_KEY
+    })
+    const aGoogleActivites = createGoogleActivites(aGoogleClient);
+
+    // Azure
+    const AZURE_API_KEY = getenv('AZURE_API_KEY');
+    const AZURE_REGION = getenv('AZURE_REGION');
+    const AZURE_ENDPOINT = getenv('AZURE_ENDPOINT');
+    const anAzureClient = new AzureClient({
+      key: AZURE_API_KEY,
+      region: AZURE_REGION
+    }, AZURE_ENDPOINT);
+    const anAzureActivites = createAzureActivites(anAzureClient);
+
     // Anki
     const anAnkiClient = new AnkiClient();
     const anAnkiActivites = createAnkiActivites(anAnkiClient);
@@ -88,7 +118,7 @@ async function run() {
       connection,
       namespace,
       taskQueue,
-      activities: {...activities, ...anAnthropicActivites, ...anOpenActivites, ...anAnkiActivites},
+      activities: {...activities, ...anAnthropicActivites, ...anOpenActivites, ...aGoogleActivites, ...anAzureActivites, ...anAnkiActivites},
       ...getWorkflowOptions(),
     });
 

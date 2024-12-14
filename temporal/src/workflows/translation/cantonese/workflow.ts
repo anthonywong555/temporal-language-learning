@@ -3,6 +3,9 @@ import type { PromiseResult, TranslationCantoneseRequest, TranslationServiceResp
 import type * as activities from '../../../sharable-activites/cantonese/activity';
 import { createAnthropicActivites } from '../../../sharable-activites/ai/anthropic/activites';
 import { createOpenAIActivites } from '../../../sharable-activites/ai/openai/activities';
+import { createGoogleActivites } from '../../../sharable-activites/ai/google/activites';
+import { createAzureActivites } from '../../../sharable-activites/ai/azure/activites';
+import type {TranslatedTextItemOutput} from '@azure-rest/ai-translation-text'
 import * as toolActivites from '../../../sharable-activites/tools/activity';
 import type Anthropic from '@anthropic-ai/sdk';
 
@@ -27,6 +30,20 @@ const { openAICreateMessage } = proxyActivities<ReturnType<typeof createOpenAIAc
   }
 });
 
+const { detectLanguage, translateText } = proxyActivities<ReturnType<typeof createGoogleActivites>>({
+  scheduleToCloseTimeout: '1 minute',
+  retry: {
+    maximumAttempts: 3
+  }
+});
+
+const { translate } = proxyActivities<ReturnType<typeof createAzureActivites>>({
+  scheduleToCloseTimeout: '1 minute',
+  retry: {
+    maximumAttempts: 3
+  }
+})
+
 const { randomDelay } = proxyActivities<typeof toolActivites>({
   startToCloseTimeout: '1 minute',
   retry: {
@@ -39,6 +56,8 @@ export const getTranslations = defineQuery<Array<TranslationServiceResponse>, []
 export async function translateCantonese(aRequest: TranslationCantoneseRequest): Promise<Array<TranslationServiceResponse>> {
   let results:Array<TranslationServiceResponse> = [];
   
+  await detectLanguage(aRequest.text);
+
   setHandler(getTranslations, () => {
     return results;
   });
@@ -72,7 +91,19 @@ export async function translateCantonese(aRequest: TranslationCantoneseRequest):
       workflowId: `openai-${workflowInfo().workflowId}`
     });
 
-    const runningTranslationServices = [anthropicChildWorkflowHandle.result(), openAIChildWorkflowHandle.result()];
+    const azureChildWorkflowHandle = await startChild(azureTranslate, {
+      args: [aRequest.text],
+      workflowId: `azure-${workflowInfo().workflowId}`,
+      parentClosePolicy: 'ABANDON'
+    })
+
+    const googleChildWorkflowHandle = await startChild(googleTranslate, {
+      args: [aRequest.text],
+      workflowId: `google-${workflowInfo().workflowId}`,
+      parentClosePolicy: 'ABANDON'
+    })
+
+    const runningTranslationServices = [anthropicChildWorkflowHandle.result(), openAIChildWorkflowHandle.result(), azureChildWorkflowHandle.result(), googleChildWorkflowHandle.result()];
 
     // Code Gen by ChatGPT-4o
     while(runningTranslationServices.length > 0) {
@@ -101,6 +132,96 @@ export async function translateCantonese(aRequest: TranslationCantoneseRequest):
   }
 
   return results;
+}
+
+export async function googleTranslate(text: string) {
+  const service = 'Google';
+  const possibleTranslations:any[] = [];
+
+  const googleResponse = await translateText(text, {
+    from: 'en',
+    to: 'yue',
+    format: 'text'
+  });
+
+  const chineseCharacters:Array<string> = googleResponse[0].split('');
+  //["現", "在"]
+
+  const aWordResponse = [];
+
+  for(const aChineseCharacter of chineseCharacters) {
+    if(await isChinese(aChineseCharacter)) {
+      const {cangjie, jyutping} = await getCangjieAndJyupting(aChineseCharacter);
+      const theActualJyutping = jyutping[0];
+      aWordResponse.push({
+        chineseText: aChineseCharacter,
+        jyutping: theActualJyutping[1],
+        cangjie: {
+          chineseCode: cangjie[0].chineseCangjie?.chineseCode,
+          englishCode: cangjie[0].chineseCangjie?.englishCode
+        }
+      });
+    }
+  }
+
+  possibleTranslations.push(aWordResponse);
+
+  return {
+    service,
+    englishText: text,
+    possibleTranslations
+  };
+}
+
+export async function azureTranslate(text: string) {
+  const service = 'Azure';
+  const possibleTranslations:any[] = [];
+
+  const azureResponse = await translate({
+    body: [{
+      text
+    }],
+    queryParameters: {
+      from: 'en',
+      to: 'yue'
+    }
+  });
+
+  const test = azureResponse.body;
+  if((test as TranslatedTextItemOutput[]).length > 0) {
+    const test1 = (test as TranslatedTextItemOutput[]);
+    const azureResults = test1[0].translations;
+
+    for(const aWord of azureResults) {
+      const chineseCharacters:Array<string> = aWord.text.split('');
+      //["現", "在"]
+  
+      const aWordResponse = [];
+  
+      for(const aChineseCharacter of chineseCharacters) {
+        if(await isChinese(aChineseCharacter)) {
+          const {cangjie, jyutping} = await getCangjieAndJyupting(aChineseCharacter);
+          const theActualJyutping = jyutping[0];
+          aWordResponse.push({
+            chineseText: aChineseCharacter,
+            jyutping: theActualJyutping[1],
+            cangjie: {
+              chineseCode: cangjie[0].chineseCangjie?.chineseCode,
+              englishCode: cangjie[0].chineseCangjie?.englishCode
+            }
+          });
+        }
+      }
+  
+      possibleTranslations.push(aWordResponse);
+    }
+  }
+
+  return {
+    service,
+    englishText: text,
+    possibleTranslations
+  };
 }
 
 export async function OpenAIGetPossibleTranslationCantonese(text: string): Promise<TranslationServiceResponse> {
@@ -153,7 +274,7 @@ export async function OpenAIGetPossibleTranslationCantonese(text: string): Promi
 }
 
 export async function AnthropicAIGetPossibleTranslationCantonese(text: string): Promise<TranslationServiceResponse> {
-  const service = 'anthropic';
+  const service = 'Anthropic';
   const model = 'claude-3-5-sonnet-20241022';
   const possibleTranslations:any[] = [];
 
