@@ -11,7 +11,6 @@
   import { toaster } from '@temporalio/ui/stores/toaster';
   import { v4 as uuidv4 } from "uuid";
   import type { TranslationRequest, TranslationResponse, TranslationHistory, TranslationServiceResponse, ChineseCharacter } from '../lib/types';
-	import { onDestroy, onMount } from 'svelte';
 	
   let requestToInterval = new Map<string, NodeJS.Timer>() // Keep track of all NodeJS.Timer
 	let translationRequests:Array<TranslationRequest> = []; // All the translation requests goes here
@@ -42,10 +41,14 @@
       return;
     }
 
-    currentQuery = query;
-    
+    currentQuery = `${query}`;
+    query = '';
+    possibleCharacters = [];
+    displayCharacters = [];
+    inputJyutping = '';
+
     const aTranslationRequest = {
-      query,
+      query: currentQuery,
       workflowId: uuidv4()
     }
     currentWorkflowId = aTranslationRequest.workflowId;
@@ -72,7 +75,6 @@
       translationResponse = {status: '', results: []}
       translationRequests = [...translationRequests, {...aTranslationRequest}];
       requestToInterval.set(aTranslationRequest.workflowId, interval);
-      query = '';
     } catch(e) {
       // TODO: Show a Toast Message
       console.error(`An error has occurred`, e);
@@ -265,18 +267,22 @@
   }
   // Jyupting Component
   function handleInput(event: InputEvent) {
+    /*
     const {data, inputType} = event;
+    console.log('inputType', inputType);
     console.log('data', data);
-    query = query.slice(0, -1);
     if(inputType === 'insertText') {
         inputJyutping = `${inputJyutping}${data}`;
         if(inputJyutping) {
           possibleCharacters = findCharacters(inputJyutping);
+          possibleCharacters = [...possibleCharacters, inputJyutping];
           currentPage = 0;
           updateDisplayCharacters();
           //query = '';
         }
-    }
+    } else if(inputType === 'insertFromPaste') {
+    
+    }*/
   }
   
   const handleNextPage = () => {
@@ -293,14 +299,6 @@
     }
   }
 
-  const handleKeydown = (event: any) => {
-    console.log('HITT');
-    if (event.key === "0" && query.trim() === "") {
-      console.log(`handleKeydown`);
-      handleNextPage();
-    }
-  };
-
   function updateDisplayCharacters() {
     const start = currentPage * 9;
     displayCharacters = possibleCharacters.slice(start, start + 9);
@@ -308,16 +306,23 @@
 
   const allowedCharacters = /^[a-zA-Z0-9]+$/; // Example: Only alphanumeric characters are allowed
 
-  function handleKeyDown(event) {
+  function handleKeyDown(event: KeyboardEvent) {
+    console.log('event', event);
     console.log('key', event.key);
     if (event.key === "Backspace") {
       if (inputJyutping.length > 0) {
         // Remove the last character from otherCharacters
         inputJyutping = inputJyutping.slice(0, -1);
+        
+        if(inputJyutping === '') {
+          displayCharacters = [];
+          possibleCharacters = [];
+        }
         event.preventDefault(); // Prevent backspace from affecting the input field
       } else if (query.length > 0) {
         // Remove the last character from inputValue if otherCharacters is empty
-        query = query.slice(0, -1);
+        //query = query.slice(0, -1);
+        //event.preventDefault();
       }
     } else if(event.key === '+') {
       handleNextPage();
@@ -325,18 +330,63 @@
     } else if(event.key === '-') {
       handlePreviousPage();
       event.preventDefault();
-    }else if(isNumber(event.key)) {
-      if(displayCharacters[parseInt(event.key)]) {
-        query = `${query}${displayCharacters[parseInt(event.key)]}`;
-        displayCharacters = [];
-        inputJyutping = '';
-        possibleCharacters = [];
+    }else if(isNumber(event.key) && inputJyutping.length > 0) {
+      let selectedText;
+      if(event.key === '0') {
+        selectedText = inputJyutping;
+      }else if(displayCharacters[parseInt(event.key) - 1]) {
+        const chineseText = displayCharacters[parseInt(event.key) - 1];
+        selectedText = chineseText;
+      }
+
+      const input = event.target;
+      const { selectionStart, selectionEnd } = event.target;
+      console.log('Selection Start:', selectionStart);
+      console.log('Selection End:', selectionEnd);
+
+      // Do something with the selection, e.g., modify the input value
+      query = query.slice(0, selectionStart) + selectedText + query.slice(selectionEnd);
+      // Update the cursor position
+      requestAnimationFrame(() => {
+        event.target.selectionStart = event.target.selectionEnd = selectionStart + selectedText.length;
+      });
+      displayCharacters = [];
+      inputJyutping = '';
+      possibleCharacters = [];
+
+      event.preventDefault();
+    } else if(!allowedCharacters.test(event.key) && event.key !== ' ') {
+      event.preventDefault();
+      console.log(`ignore1`);
+    } else if(
+      allowedCharacters.test(event.key) &&  
+      !event.metaKey && 
+      !event.key.includes('Arrow') && 
+      event.key.length === 1) {
+
+      if(isNumber(event.key)) {
+        event.preventDefault();
+        return;
+      }
+      
+      inputJyutping = `${inputJyutping}${event.key}`;
+      if(inputJyutping) {
+        possibleCharacters = findCharacters(inputJyutping);
+        possibleCharacters = [...possibleCharacters];
+        currentPage = 0;
+        updateDisplayCharacters();
+        //query = '';
+        
       }
 
       event.preventDefault();
-    } else if(!allowedCharacters.test(event.key)) {
-      event.preventDefault();
     }
+  }
+
+  function copyToClipboard(text:string) {
+    navigator.clipboard.writeText(text)
+      .then(() => alert('Copied!'))
+      .catch(err => console.error('Failed to copy: ', err));
   }
 </script>
 
@@ -370,21 +420,20 @@
       {inputJyutping}
       <Input type="text" bind:value={query} on:input={handleInput} on:keydown={handleKeyDown}  label="Enter English or Chinese" id="Input-Field" />
       <Button type="button" on:click={startTranslation}>Submit</Button>
-      {#if displayCharacters.length > 0}
       <ul>
-        {#each displayCharacters as character}
-          <li> {character}</li>
+        {#each displayCharacters as character, index}
+          <li class="possibleCharacters"> {index + 1}.{character} </li>
         {/each}
+        {#if inputJyutping != ''}
+          <li class="possibleCharacters"> 0.{inputJyutping} </li>
+        {/if}
+        {#if (currentPage + 1) * 9 < possibleCharacters.length}
+          <li class="possibleCharacters">+</li>
+        {/if}
+        {#if currentPage != 0 }
+          <li class="possibleCharacters">-</li>
+        {/if}
       </ul>
-      {#if (currentPage + 1) * 9 < possibleCharacters.length}
-        <p>+</p>
-      {/if}
-      {#if currentPage != 0 }
-        <p>-</p>
-      {/if}
-    {:else}
-      <p>No matching characters found.</p>
-    {/if}
     </section>
     <section class="flex flex-col">
       {#if (translationResponse.results.length === 0 && currentQuery != '')}
@@ -404,9 +453,9 @@
                   </div>
                   <h3>Service: {aService.service}</h3>
                   <!--<h3>{aService.model}</h3>-->
-                  <h3>Chinese: {aTranslation.chineseText}</h3>
-                  <h3>Jyupting: {aTranslation.jyutping}</h3>
-                  <h3>Cangjie: {aTranslation.cangjieChineseCodes}</h3>
+                  <h3 on:click={copyToClipboard(aTranslation.chineseText)}>Chinese: {aTranslation.chineseText}</h3>
+                  <h3 on:click={copyToClipboard(aTranslation.jyutping)}>Jyutping: {aTranslation.jyutping}</h3>
+                  <h3 on:click={copyToClipboard(aTranslation.cangjieChineseCodes)}>Cangjie: {aTranslation.cangjieChineseCodes}</h3>
                   <h3>English Code: {aTranslation.cangjieEnglishCodes}</h3>
                   <Button type="button" on:click={() => addSearchToDeck(aTranslation, currentQuery, aService)}>Add</Button>
                 </article>
@@ -448,6 +497,10 @@
     float: left;
   }
 
+  .possibleCharacters {
+    float: left;
+  }
+
   #past-searches {
     width: 20%;
     overflow-y: scroll;
@@ -461,6 +514,4 @@
   #search {
     width: 80%;
   }
-
-
 </style>

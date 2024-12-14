@@ -29,7 +29,7 @@ export interface ChineseCharacter {
   jyutping: any;
   cangjieChineseCodes: any;
   chineseCharacter: string; // 我
-  jyupting: string | null; // ngo5
+  //jyupting: string | null; // ngo5
   cangjie: {
       chineseCode: string | undefined; // 竹手戈
       englishCode: string | undefined; // HQI
