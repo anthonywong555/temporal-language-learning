@@ -21,6 +21,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
+    "@azure-rest/ai-translation-text": "^1.0.0",
+    "@google-cloud/translate": "^8.5.0",
     "@temporalio/activity": "^1.11.5",
     "@temporalio/client": "^1.11.5",
     "@temporalio/worker": "^1.11.5",
