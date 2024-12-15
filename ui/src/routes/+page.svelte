@@ -31,6 +31,7 @@
   //const jyutpings = Object.keys(jyutpingToChinese);
   const jyutpings = Array.from(jyutpingToChinese.keys());
   //console.log('jyutpings', jyutpings);
+  let isJyuptingTyping = false;
 
 	let query = '';
   let currentQuery = '';
@@ -265,25 +266,6 @@
     }
   return !Number.isNaN(str) && !isNaN(parseFloat(str));
   }
-  // Jyupting Component
-  function handleInput(event: InputEvent) {
-    /*
-    const {data, inputType} = event;
-    console.log('inputType', inputType);
-    console.log('data', data);
-    if(inputType === 'insertText') {
-        inputJyutping = `${inputJyutping}${data}`;
-        if(inputJyutping) {
-          possibleCharacters = findCharacters(inputJyutping);
-          possibleCharacters = [...possibleCharacters, inputJyutping];
-          currentPage = 0;
-          updateDisplayCharacters();
-          //query = '';
-        }
-    } else if(inputType === 'insertFromPaste') {
-    
-    }*/
-  }
   
   const handleNextPage = () => {
     if ((currentPage + 1) * 9 < possibleCharacters.length) {
@@ -309,77 +291,84 @@
   function handleKeyDown(event: KeyboardEvent) {
     console.log('event', event);
     console.log('key', event.key);
-    if (event.key === "Backspace") {
-      if (inputJyutping.length > 0) {
-        // Remove the last character from otherCharacters
-        inputJyutping = inputJyutping.slice(0, -1);
-        
-        if(inputJyutping === '') {
-          displayCharacters = [];
-          possibleCharacters = [];
+
+    if(event.key === 'Control') {
+      isJyuptingTyping = !isJyuptingTyping;
+    }
+
+    if(isJyuptingTyping) {
+      if (event.key === "Backspace") {
+        if (inputJyutping.length > 0) {
+          // Remove the last character from otherCharacters
+          inputJyutping = inputJyutping.slice(0, -1);
+          
+          if(inputJyutping === '') {
+            displayCharacters = [];
+            possibleCharacters = [];
+          }
+          event.preventDefault(); // Prevent backspace from affecting the input field
+        } else if (query.length > 0) {
+          // Remove the last character from inputValue if otherCharacters is empty
+          //query = query.slice(0, -1);
+          //event.preventDefault();
         }
-        event.preventDefault(); // Prevent backspace from affecting the input field
-      } else if (query.length > 0) {
-        // Remove the last character from inputValue if otherCharacters is empty
-        //query = query.slice(0, -1);
-        //event.preventDefault();
-      }
-    } else if(event.key === '+') {
-      handleNextPage();
-      event.preventDefault();
-    } else if(event.key === '-') {
-      handlePreviousPage();
-      event.preventDefault();
-    }else if(isNumber(event.key) && inputJyutping.length > 0) {
-      let selectedText;
-      if(event.key === '0') {
-        selectedText = inputJyutping;
-      }else if(displayCharacters[parseInt(event.key) - 1]) {
-        const chineseText = displayCharacters[parseInt(event.key) - 1];
-        selectedText = chineseText;
-      }
-
-      const input = event.target;
-      const { selectionStart, selectionEnd } = event.target;
-      console.log('Selection Start:', selectionStart);
-      console.log('Selection End:', selectionEnd);
-
-      // Do something with the selection, e.g., modify the input value
-      query = query.slice(0, selectionStart) + selectedText + query.slice(selectionEnd);
-      // Update the cursor position
-      requestAnimationFrame(() => {
-        event.target.selectionStart = event.target.selectionEnd = selectionStart + selectedText.length;
-      });
-      displayCharacters = [];
-      inputJyutping = '';
-      possibleCharacters = [];
-
-      event.preventDefault();
-    } else if(!allowedCharacters.test(event.key) && event.key !== ' ') {
-      event.preventDefault();
-      console.log(`ignore1`);
-    } else if(
-      allowedCharacters.test(event.key) &&  
-      !event.metaKey && 
-      !event.key.includes('Arrow') && 
-      event.key.length === 1) {
-
-      if(isNumber(event.key)) {
+      } else if(event.key === '+') {
+        handleNextPage();
         event.preventDefault();
-        return;
-      }
-      
-      inputJyutping = `${inputJyutping}${event.key}`;
-      if(inputJyutping) {
-        possibleCharacters = findCharacters(inputJyutping);
-        possibleCharacters = [...possibleCharacters];
-        currentPage = 0;
-        updateDisplayCharacters();
-        //query = '';
-        
-      }
+      } else if(event.key === '-') {
+        handlePreviousPage();
+        event.preventDefault();
+      }else if(isNumber(event.key) && inputJyutping.length > 0) {
+        let selectedText;
+        if(event.key === '0') {
+          selectedText = inputJyutping;
+        }else if(displayCharacters[parseInt(event.key) - 1]) {
+          const chineseText = displayCharacters[parseInt(event.key) - 1];
+          selectedText = chineseText;
+        }
 
-      event.preventDefault();
+        const input = event.target;
+        const { selectionStart, selectionEnd } = event.target;
+        console.log('Selection Start:', selectionStart);
+        console.log('Selection End:', selectionEnd);
+
+        // Do something with the selection, e.g., modify the input value
+        query = query.slice(0, selectionStart) + selectedText + query.slice(selectionEnd);
+        // Update the cursor position
+        requestAnimationFrame(() => {
+          event.target.selectionStart = event.target.selectionEnd = selectionStart + selectedText.length;
+        });
+        displayCharacters = [];
+        inputJyutping = '';
+        possibleCharacters = [];
+
+        event.preventDefault();
+      } else if(!allowedCharacters.test(event.key) && event.key !== ' ') {
+        event.preventDefault();
+        console.log(`ignore1`);
+      } else if(
+        allowedCharacters.test(event.key) &&  
+        !event.metaKey && 
+        !event.key.includes('Arrow') && 
+        event.key.length === 1) {
+
+        if(isNumber(event.key)) {
+          event.preventDefault();
+          return;
+        }
+        
+        inputJyutping = `${inputJyutping}${event.key}`;
+        if(inputJyutping) {
+          possibleCharacters = findCharacters(inputJyutping);
+          possibleCharacters = [...possibleCharacters];
+          currentPage = 0;
+          updateDisplayCharacters();
+          //query = '';
+          
+        }
+
+        event.preventDefault();
+      }
     }
   }
 
@@ -417,8 +406,12 @@
   </section>
   <section class="flex flex-col gap-7" id="search">
     <section class="flex flex-col items-center">
-      {inputJyutping}
-      <Input type="text" bind:value={query} on:input={handleInput} on:keydown={handleKeyDown}  label="Enter English or Chinese" id="Input-Field" />
+      {#if isJyuptingTyping}
+        Jyupting Typing Enabled
+      {/if}
+      <br /> 
+      {inputJyutping} <br />
+      <Input type="text" bind:value={query} on:keydown={handleKeyDown}  label="Enter English or Chinese" id="Input-Field" />
       <Button type="button" on:click={startTranslation}>Submit</Button>
       <ul>
         {#each displayCharacters as character, index}
