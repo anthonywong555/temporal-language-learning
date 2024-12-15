@@ -11,7 +11,11 @@
   import { toaster } from '@temporalio/ui/stores/toaster';
   import { v4 as uuidv4 } from "uuid";
   import type { TranslationRequest, TranslationResponse, TranslationHistory, TranslationServiceResponse, ChineseCharacter } from '../lib/types';
-	
+	import Azure from '../lib/assets/Azure.svelte';
+  import Google from '../lib/assets/Google.svelte';
+  import OpenAI from '../lib/assets/OpenAI.svelte';
+	import Anthropic from '$lib/assets/Anthropic.png';
+
   let requestToInterval = new Map<string, NodeJS.Timer>() // Keep track of all NodeJS.Timer
 	let translationRequests:Array<TranslationRequest> = []; // All the translation requests goes here
 	// {"query": "now", "workflowId": "uuidv4"}
@@ -444,6 +448,15 @@
                 <article class={`${aTranslation?.isSave === true ? 'saveCard card' : 'card'}`} aria-label={aService.service}>
                   <div class="flex justify-between">
                   </div>
+                  {#if aService.service === 'OpenAI'}
+                    <OpenAI />
+                    {:else if aService.service === 'Google'}
+                    <Google />
+                    {:else if aService.service === 'Azure'}
+                    <Azure />
+                    {:else if aService.service === 'Anthropic'}
+                    <img src={Anthropic} alt="Anthropic Logo" class="logos" />
+                  {/if}
                   <h3>Service: {aService.service}</h3>
                   <!--<h3>{aService.model}</h3>-->
                   <h3 on:click={copyToClipboard(aTranslation.chineseText)}>Chinese: {aTranslation.chineseText}</h3>
@@ -506,5 +519,17 @@
 
   #search {
     width: 80%;
+  }
+
+  :global(svg) {
+		max-width: 50px;
+    max-height: 50px;
+		display: block
+	}
+
+  .logos {
+    max-width: 50px;
+    max-height: 50px;
+		display: block
   }
 </style>
